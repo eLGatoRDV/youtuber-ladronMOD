@@ -1,0 +1,16 @@
+{
+	"schemaVersion": 1,
+	"id": "elplagio-dev",
+	"version": "1.0.0",
+	"name": "El Plagio: escena de prueba",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"com.elplagio.dev.EscenaDev",
+			"com.elplagio.dev.MundoVideoDev"
+		]
+	},
+	"depends": {
+		"elplagio": "*"
+	}
+}

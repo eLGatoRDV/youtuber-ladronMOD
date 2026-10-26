@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"id": "elplagio-gametest",
+	"version": "1.0.0",
+	"name": "El Plagio GameTests",
+	"environment": "*",
+	"entrypoints": {
+		"fabric-gametest": [
+			"com.elplagio.test.ElPlagioGameTests"
+		]
+	},
+	"depends": {
+		"elplagio": "*"
+	}
+}

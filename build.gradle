@@ -1,0 +1,131 @@
+plugins {
+	id 'net.fabricmc.fabric-loom-remap' version "${loom_version}"
+}
+
+// Primero, para que exista el source set "client" al definir los de prueba
+loom {
+	splitEnvironmentSourceSets()
+}
+
+sourceSets {
+	// Pruebas automáticas en un servidor headless; no van en el jar del mod
+	gametest {
+		compileClasspath += main.compileClasspath + main.output
+		runtimeClasspath += main.runtimeClasspath + main.output
+	}
+	// Escena de prueba con gráficos (./gradlew runEscena); tampoco va en el jar
+	devcliente {
+		compileClasspath += client.compileClasspath + client.output + main.output
+		runtimeClasspath += client.runtimeClasspath + client.output + main.output
+	}
+}
+
+loom {
+	mods {
+		"elplagio" {
+			sourceSet sourceSets.main
+			sourceSet sourceSets.client
+		}
+	}
+
+	runs {
+		gametest {
+			server()
+			name "Game Test"
+			vmArg "-Dfabric-api.gametest"
+			vmArg "-Dfabric-api.gametest.report-file=${project.layout.buildDirectory.get()}/gametest/junit.xml"
+			runDir "build/gametest"
+			source sourceSets.gametest
+		}
+
+		escena {
+			client()
+			name "Escena de prueba"
+			vmArg "-Delplagio.dev.consola=${providers.gradleProperty("consola").getOrElse("gba_handheld")}"
+			vmArg "-Delplagio.dev.modo=${providers.gradleProperty("modo").getOrElse("fotos")}"
+			runDir "run"
+			source sourceSets.devcliente
+		}
+	}
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	mappings loom.officialMojangMappings()
+	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+	// Para probar el cambiazo con los dos mods reales (RetroCraft y EmuMod parcheado en libs/, que no está en el repo);
+	// no van dentro del jar
+	modLocalRuntime fileTree("libs") { include "*.jar" }
+}
+
+processResources {
+	def version = project.version
+	inputs.property "version", version
+
+	filesMatching("fabric.mod.json") {
+		expand "version": version
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 21
+	it.options.encoding = "UTF-8"
+}
+
+java {
+	sourceCompatibility = JavaVersion.VERSION_21
+	targetCompatibility = JavaVersion.VERSION_21
+}
+
+jar {
+	from("LICENSE")
+	// java -jar (o doble click) abre el parcheador de EmuMod; para Minecraft es un mod normal
+	manifest {
+		attributes "Main-Class": "com.elplagio.parche.ParcheEmuMod"
+	}
+}
+
+// Genera el parche que convierte el EmuMod 2.2.0 oficial (1.20.1) en uno para 1.21.1: lo que cambia entre el jar oficial
+// y el porteado (clases, fabric.mod.json, datos), sin las DLLs ni los modelos, que salen del oficial. Solo hace falta
+// correrlo si cambia el port: ./gradlew generarParcheEmuMod -PjarOficial=... -PjarPorteado=...
+tasks.register("generarParcheEmuMod") {
+	description = "Genera src/main/resources/parche/emumod-2.2.0-a-1.21.1.zip a partir del jar oficial y el porteado"
+	def oficial = file(providers.gradleProperty("jarOficial").getOrElse("../EmuMod-1.21.1/build/emumod-oficial/emumod-2.2.0.jar"))
+	def porteado = file(providers.gradleProperty("jarPorteado").getOrElse("../EmuMod-1.21.1/build/libs/emumod-2.2.0+1.21.1.jar"))
+	def salida = file("src/main/resources/parche/emumod-2.2.0-a-1.21.1.zip")
+	inputs.files(oficial, porteado)
+	outputs.file(salida)
+	doLast {
+		def hashOficial = java.security.MessageDigest.getInstance("SHA-256").digest(oficial.bytes).encodeHex().toString()
+		def leer = { File jar ->
+			def contenido = [:]
+			new java.util.zip.ZipFile(jar).withCloseable { zip ->
+				zip.entries().each { e -> if (!e.directory) contenido[e.name] = zip.getInputStream(e).bytes }
+			}
+			contenido
+		}
+		def a = leer(oficial), b = leer(porteado)
+		def borrar = (a.keySet() - b.keySet()).sort()
+		def agregar = b.keySet().findAll { !a.containsKey(it) || !Arrays.equals(a[it], b[it]) }.sort()
+		salida.parentFile.mkdirs()
+		new java.util.zip.ZipOutputStream(salida.newOutputStream()).withCloseable { zip ->
+			def poner = { String nombre, byte[] datos ->
+				def entrada = new java.util.zip.ZipEntry(nombre)
+				entrada.time = 0
+				zip.putNextEntry(entrada)
+				zip.write(datos)
+				zip.closeEntry()
+			}
+			// Texto simple: el parcheador corre fuera de Minecraft, sin librerías de JSON
+			def indice = new StringBuilder()
+			indice << "base ${oficial.name}\n" << "sha256 ${hashOficial}\n"
+			indice << "salida ${porteado.name.replace(".jar", "-parche-elplagio.jar")}\n"
+			borrar.each { indice << "borrar ${it}\n" }
+			poner("parche.txt", indice.toString().getBytes("UTF-8"))
+			agregar.each { poner("agregar/" + it, b[it]) }
+		}
+		println "Parche: ${agregar.size()} archivos nuevos o cambiados, ${borrar.size()} a borrar, ${salida.length()} bytes"
+	}
+}

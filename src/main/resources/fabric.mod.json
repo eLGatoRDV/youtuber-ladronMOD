@@ -1,0 +1,35 @@
+{
+	"schemaVersion": 1,
+	"id": "elplagio",
+	"version": "${version}",
+	"name": "El Plagio",
+	"description": "Parodia del beef de los emuladores dentro de Minecraft (octubre de 2026): el Youtuber porteño Ladrón entra a tu partida como si fuera un jugador, te saca de la mano la consola de RetroCraft y te deja la suya de EmuMod, vibecodeada. Es un meme: no está afiliado a ningún mod ni creador.",
+	"authors": [
+		"eLGatoRDV"
+	],
+	"contact": {
+		"sources": "https://github.com/eLGatoRDV/youtuber-ladronMOD",
+		"issues": "https://github.com/eLGatoRDV/youtuber-ladronMOD/issues"
+	},
+	"license": "MIT",
+	"icon": "assets/elplagio/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.elplagio.ElPlagio"
+		],
+		"client": [
+			"com.elplagio.client.ElPlagioClient"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.16.0",
+		"minecraft": "~1.21.1",
+		"java": ">=21",
+		"fabric-api": "*"
+	},
+	"suggests": {
+		"retrocraft": "*",
+		"emumod": "*"
+	}
+}
