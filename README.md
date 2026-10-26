@@ -1,7 +1,6 @@
 # El Plagio (youtuber-ladronMOD)
 
-Mod meme para Minecraft **1.21.1** (Fabric), por el beef de los emuladores dentro de Minecraft de octubre de 2026.
-Es una parodia: no está afiliado a ningún mod ni creador.
+Mod para Minecraft **1.21.1** (Fabric).
 
 ## Qué hace
 
